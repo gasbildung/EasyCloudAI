@@ -38,7 +38,7 @@ Resources:
       KeyName: !Ref KeyName
       SubnetId: !Ref SubnetId
       UserData:
-        Fn::Base64: |
+        Fn::Base64: !Sub |
           #!/bin/bash
           # - scientific packages
           # - ipython tab completion
@@ -49,6 +49,7 @@ Resources:
           yum install -y git
           curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
           python3 get-pip.py
+          su ec2-user
           pip install jupyter
           # Basic kernels
           pip install bash_kernel
@@ -58,11 +59,11 @@ Resources:
           pip install ipywidgets
           jupyter nbextension enable --py widgetsnbextension
           # Scientific python packages
-          pip install numpy scipy matplotlib pandas scikit-learn bokeh torch
+          pip install numpy scipy matplotlib pandas scikit-learn bokeh
           #IPython shift+tab completion
           pip install pyreadline
           #Default password is set to your_password change that with the NotebookApp.password argument
-          jupyter notebook --ip "*" --port=8888 --no-browser --NotebookApp.password='sha1:a58051cdbd5c:8ee35109f0076445b37be17d926e56bee5910bea' &
+          nohup jupyter notebook --ip "*" --port=8888 --no-browser --NotebookApp.password='sha1:a58051cdbd5c:8ee35109f0076445b37be17d926e56bee5910bea' &
       Tags:
         - Key: Name
           Value: Jupyter-Notebook-Instance
