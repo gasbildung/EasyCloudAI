@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.micro
+    Description: Instance type to launch
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID to launch the instance in
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet ID to launch the instance in
+Resources:
+  SecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'Allow inbound traffic on port 8888 for Jupyterhub and 22 for ssh from any IP'
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8888
+          ToPort: 8888
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+  Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap [RegionMap, !Ref 'AWS::Region', AMI]
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      KeyName: !Ref KeyName
+      SubnetId: !Ref SubnetId
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          # - scientific packages
+          # - ipython tab completion
+          # - bash kernel
+          # - ipywidgets
+          set -e
+          yum update -y
+          yum install -y git
+          curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+          python3 get-pip.py
+          pip install jupyter
+          # Basic kernels
+          pip install bash_kernel
+          python3 -m bash_kernel.install
+          ## Ipywidgets
+          # https://ipywidgets.readthedocs.io/en/latest/user_guide.html
+          pip install ipywidgets
+          jupyter nbextension enable --py widgetsnbextension
+          # Scientific python packages
+          pip install numpy scipy matplotlib pandas scikit-learn bokeh torch
+          #IPython shift+tab completion
+          pip install pyreadline
+          #Default password is set to your_password change that with the NotebookApp.password argument
+          jupyter notebook --ip "*" --port=8888 --no-browser --NotebookApp.password='sha1:a58051cdbd5c:8ee35109f0076445b37be17d926e56bee5910bea' &
+      Tags:
+        - Key: Name
+          Value: Jupyter-Notebook-Instance
+Outputs:
+  NotebookUrl:
+    Value: !Join ["", ["http://", !GetAtt Instance.PublicIp, ":8888"]]
+    Description: "URL for the Jupyter Notebook server on port 8888"
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-0a6e3b84867a3f6b6
+    us-west-2:
+      AMI: ami-0a02e6a8f3e3fda5b
+    eu-west-1:
+      AMI: ami-06e0ce9d3339cb039
+    ap-northeast-1:
+      AMI: ami-0a9b1ae47b978bcea
+    ap-southeast-2:
+      AMI: ami-0d7903c3d384f4099
