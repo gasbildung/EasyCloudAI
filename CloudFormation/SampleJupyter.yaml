@@ -62,8 +62,31 @@ Resources:
           pip install numpy scipy matplotlib pandas scikit-learn bokeh
           #IPython shift+tab completion
           pip install pyreadline
-          #Default password is set to your_password change that with the NotebookApp.password argument
-          nohup jupyter notebook --ip "*" --port=8888 --no-browser --NotebookApp.password='sha1:a58051cdbd5c:8ee35109f0076445b37be17d926e56bee5910bea' &
+          #Default password is set to your_password change that with the NotebookApp.password argument, service is running as root - be cautious.
+          # Create a new systemd service file for Jupyter
+          cat <<EOF > /etc/systemd/system/jupyter.service
+          [Unit]
+          Description=Jupyter Notebook
+          [Service]
+          Type=simple
+          PIDFile=/run/jupyter.pid
+          ExecStart=/usr/local/bin/jupyter notebook --ip '*' --port=8888 --no-browser --NotebookApp.password='sha1:a58051cdbd5c:8ee35109f0076445b37be17d926e56bee5910bea' --allow-root
+          User=root
+          Group=root
+          WorkingDirectory=/usr/local/bin
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          # Reload systemd daemon to pick up the new service
+          systemctl daemon-reload
+
+          # Start the Jupyter service
+          systemctl start jupyter
+
+          # Enable the Jupyter service to start au
+          systemctl enable jupyter
       Tags:
         - Key: Name
           Value: Jupyter-Notebook-Instance
